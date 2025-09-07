@@ -1,0 +1,6 @@
+module mux(
+input i_i1, i_i2, s,
+output o_q
+    );
+    assign o_q = (s)? i_i2 : i_i1;
+endmodule

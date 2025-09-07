@@ -1,0 +1,17 @@
+module double_flop(
+input i_clk, i_rst, i_D,
+output reg o_q
+    );
+    reg first_ff_o;
+    always @(posedge i_clk)
+    begin
+    if(i_rst) begin
+        o_q<=0;
+        first_ff_o <= 0;
+    end
+    else begin
+        first_ff_o<=i_D;
+        o_q <= first_ff_o;
+    end
+    end
+    

@@ -1,0 +1,13 @@
+module dff(
+input i_clk, i_rst, i_D,
+output reg o_q
+    );
+    always @(posedge i_clk)
+    begin
+    if(i_rst)
+        o_q<=0;
+    else
+        o_q<=i_D;
+    end
+    
+endmodule
