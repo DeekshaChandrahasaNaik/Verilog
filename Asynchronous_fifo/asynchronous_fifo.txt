@@ -1,0 +1,80 @@
+`timescale 1ns / 1ps
+
+module fifo#(parameter WIDTH=8, parameter DEPTH=8)( 
+input i_w_clk, i_r_clk, i_w_rst, i_r_rst, i_ren, i_wen,
+input [WIDTH-1:0]i_write_data,
+output reg [WIDTH-1:0]o_read_data,
+output full,empty
+    );
+    reg [WIDTH-1:0]mem[DEPTH-1:0];
+    reg [$clog2(DEPTH):0]wr_ptr;
+    reg [$clog2(DEPTH):0]rd_ptr;
+    wire [$clog2(DEPTH):0]B_G_r, B_G_w;
+    reg [$clog2(DEPTH):0]o_dou_rd_ptr, o_dou_wr_ptr, dumm1, dumm2;
+    wire [$clog2(DEPTH):0]new_rd_ptr, new_wr_ptr;
+    
+    //write logic
+    always @(posedge i_w_clk)
+    begin
+      if(i_w_rst) 
+        wr_ptr <= 0;
+      else if(i_wen && !full) begin
+        mem[wr_ptr] <= i_write_data;
+        wr_ptr <= (wr_ptr + 1);
+      end
+    end
+    
+      // Read operation
+    always @(posedge i_r_clk) begin
+        if (i_r_rst) begin
+            rd_ptr <= 0;
+            o_read_data  <= 0;
+        end else if (i_ren && !empty) begin
+            o_read_data <= mem[rd_ptr];
+            rd_ptr <= (rd_ptr + 1);
+        end
+    end
+//binary to gray conversion at read ptr
+     assign  B_G_r = (rd_ptr ^ (rd_ptr >> 1));
+ //double flop synchronizer at destination to source    
+     always @(posedge i_w_clk) begin
+        if (i_w_rst) begin
+            o_dou_rd_ptr <= 0;
+            dumm1<=0;
+        end else begin
+            dumm1 <= B_G_r;
+            o_dou_rd_ptr <= dumm1;
+        end
+    end 
+    
+ //gray to binary funtion
+    function [$clog2(DEPTH):0]g2b(input [$clog2(DEPTH):0]var);
+        begin
+            g2b[3] = var[3];
+            g2b[2] = var[2] ^ g2b[3];
+            g2b[1] = var[1] ^ g2b[2];
+            g2b[0] = var[0] ^ g2b[1];
+        end
+    endfunction
+    
+    assign new_rd_ptr = g2b(o_dou_rd_ptr); 
+    
+    //binary to gray conversion at write ptr
+     assign  B_G_w = (wr_ptr ^ (wr_ptr >> 1));
+ //double flop synchronizer at source to destination    
+     always @(posedge i_r_clk) begin
+        if (i_r_rst) begin
+            o_dou_wr_ptr <= 0;
+            dumm2<=0;
+        end else begin
+            dumm2 <= B_G_w;
+            o_dou_wr_ptr <= dumm2;
+        end
+    end 
+     
+    assign new_wr_ptr = g2b(o_dou_wr_ptr); 
+    
+    assign empty = (new_wr_ptr == rd_ptr);
+    assign full = ({~wr_ptr[3], wr_ptr[2:0]}==new_rd_ptr);
+
+endmodule
